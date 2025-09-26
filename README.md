@@ -22,14 +22,8 @@ pharmacokinetic and quantitative systems pharmacology modeling.
 
 - Donato Teutonico ([Maintainer](mailto:donato.teutonico@gmail.com))
 - Marc Lavielle
-- Audrey Lavenu
 - Emmanuelle Comets
-- Belhal Karimi
-- Maud Delattre
-- Marilou Chanel
-- Johannes Ranke
-- Sofia Kaisaridi
-- Lucie Fayette
+- Lucas Bodelle
 
 ## Installation
 
