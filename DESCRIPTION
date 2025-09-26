@@ -54,12 +54,6 @@ Collate:
 Packaged: 2023-11-30 17:36:48 UTC; 
 Author: Donato Teutonico [aut]
   Marc Lavielle [aut, cre],
-  Audrey Lavenu [aut],
-  Emmanuelle Comets [aut],
-  Belhal Karimi [aut],
-  Maud Delattre [ctb],
-  Marilou Chanel [ctb],
-  Johannes Ranke [ctb] (<https://orcid.org/0000-0003-4371-6538>),
-  Sofia Kaisaridi [ctb],
-  Lucie Fayette [ctb]
+  Emmanuelle Comets [ctb],
+  Lucas Bodelle [ctb]
 Maintainer: Donato Teutonico <donato.teutonico@gmail.com>
