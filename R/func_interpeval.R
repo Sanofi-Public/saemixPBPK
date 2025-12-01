@@ -34,123 +34,147 @@
 #'
 #' @export interpeval
 
-interpeval <- function(fit, rgrid, simulations, output=NULL, index=NULL, id=NULL, extreme=T) {
-  
+interpeval <- function (fit, rgrid, simulations, output = NULL, index = NULL, 
+                        id = NULL, extreme = T) 
+{
   model <- fit@model@modelPKSim
-  data <- fit@data@data %>% rename(id=fit@data@name.group, time=fit@data@name.X, y=fit@data@name.response) %>%
-    mutate(f.approx=fit@results@predictions$ipred)
-  
+  data <- fit@data@data %>% rename(id = fit@data@name.group, 
+                                   time = fit@data@name.X, y = fit@data@name.response) %>% 
+    mutate(f.approx = fit@results@predictions$ipred)
   list.index <- seq_len(fit@data@N)
-  list.id <- levels(data$id)
+  list.id <- levels(as.factor(data$id))
   if (!is.null(id)) {
     list.index <- sort(list.index[match(id, list.id)])
-  } else if (!is.null(index)) {
+  }
+  else if (!is.null(index)) {
     list.index <- index
   }
   list.id <- list.id[list.index]
   simulations <- simulations[list.id]
   rgrid[1:3] <- lapply(rgrid[1:3], function(x) x[list.index])
-  data <- data %>% dplyr::filter(index %in% list.index) %>% droplevels()
-  
+  data <- data %>% dplyr::filter(index %in% list.index) %>% 
+    droplevels()
   psif <- psi(fit)
   d <- ncol(psif)
-  psi.ebe <- as.matrix(psif[list.index,], ncol=d)
-  if (d==1) {
-    psi.ebe <- as.matrix(psi.ebe, ncol=1)
-    colnames(psi.ebe) <- colnames(psif) 
+  psi.ebe <- as.matrix(psif[list.index, ], ncol = d)
+  if (d == 1) {
+    psi.ebe <- as.matrix(psi.ebe, ncol = 1)
+    colnames(psi.ebe) <- colnames(psif)
   }
   N <- length(simulations)
   pred <- NULL
   cat(" // Predictions using EBEs //\n")
-  pb <- progress::progress_bar$new(format = "   [:bar] :percent // id :what  ", total = N, width = 60)
+  pb <- progress::progress_bar$new(format = "   [:bar] :percent // id :what  ", 
+                                   total = N, width = 60)
   pb$tick(0)
   Sys.sleep(0.5)
   for (i in seq_len(N)) {
     pb$tick(tokens = list(what = i))
-    pred <- c(pred, model(psi.ebe[i,], simulations[[i]], output))
+    pred <- c(pred, model(psi.ebe[i, ], simulations[[i]], 
+                          output))
   }
-  
-  Qebe <- data %>% mutate(f.exact=pred) %>% select(id, time, y, f.exact, f.approx)
-  Ef <- Qebe %>% reframe(rmse=sqrt(mean(((f.approx-f.exact)/f.exact)^2)), maxe=max(abs((f.approx-f.exact)/f.exact)), .by=id)
-  
+  Qebe <- data %>% mutate(f.exact = pred) %>% select(id, time, 
+                                                     y, f.exact, f.approx)
+  Ef <- Qebe %>% reframe(rmse = sqrt(mean(((f.approx - f.exact)/f.exact)^2)), 
+                         maxe = max(abs((f.approx - f.exact)/f.exact)), .by = id)
   txt <- NULL
-  for (j in seq_len(ncol(psi.ebe)))
-    txt <- paste0(txt, paste0(colnames(psi.ebe)[j], " = ", signif(psi.ebe[,j],3),"\n"))
-  Ttxt <- data.frame(id=factor(levels(data$id), levels=levels(data$id)), text=txt)
-  pl1 <- ggplot(Qebe)  +
-    geom_line(aes(time, f.approx, color="f.approx"), linewidth=0.75)  + geom_line(aes(time, f.exact, color="f.exact")) + 
-    geom_point(aes(time, f.approx, color="f.approx")) + geom_point(aes(time, f.exact, color="f.exact"), size=1) +  
-    facet_wrap(~id, scales="free") + ylab("Predictions using EBEs") + scale_color_manual(values = c("f.approx"="red", "f.exact"="blue")) + theme(legend.title = element_blank())
-  pl1 <- pl1 + geom_text(data=Ttxt,  mapping=aes(x=Inf, y=Inf, label=text), hjust = 1.1, vjust = 1.1) 
-  
+  for (j in seq_len(ncol(psi.ebe))) txt <- paste0(txt, paste0(colnames(psi.ebe)[j], 
+                                                              " = ", signif(psi.ebe[, j], 3), "\n"))
+  Ttxt <- data.frame(id = factor(levels(as.factor(data$id)), levels = levels(as.factor(data$id))), 
+                     text = txt)
+  pl1 <- ggplot(Qebe) + geom_line(aes(time, f.approx, color = "f.approx"), 
+                                  linewidth = 0.75) + geom_line(aes(time, f.exact, color = "f.exact")) + 
+    geom_point(aes(time, f.approx, color = "f.approx")) + 
+    geom_point(aes(time, f.exact, color = "f.exact"), size = 1) + 
+    facet_wrap(~id, scales = "free") + ylab("Predictions using EBEs") + 
+    scale_color_manual(values = c(f.approx = "red", f.exact = "blue")) + 
+    theme(legend.title = element_blank())
+  pl1 <- pl1 + geom_text(data = Ttxt, mapping = aes(x = Inf, 
+                                                    y = Inf, label = text), hjust = 1.1, vjust = 1.1)
   if (!extreme) {
     pl <- pl1
     Q <- wm <- NULL
-  } else {
+  }
+  else {
     W <- rgrid[[1]]
     L <- rgrid[[2]]
     f <- rgrid[[3]]
-    j1 <- which(unlist(lapply(W[[1]], function(x) {length(x)>1})))
+    j1 <- which(unlist(lapply(W[[1]], function(x) {
+      length(x) > 1
+    })))
     d <- length(j1)
-    mi <- 2*d
+    mi <- 2 * d
     wpm <- list()
     for (i in 1:N) {
-      wpm[[i]] <- matrix(unlist(lapply(W[[i]], function(x) {mean(x)})), nrow=1)
+      wpm[[i]] <- matrix(unlist(lapply(W[[i]], function(x) {
+        mean(x)
+      })), nrow = 1)
       W[[i]] <- W[[i]][j1]
-      L[[i]] <- array(drop((L[[i]])), dim=dim(L[[i]])[j1])
+      L[[i]] <- array(drop((L[[i]])), dim = dim(L[[i]])[j1])
     }
     r.ext <- extreme.psi(L)
     pname <- rgrid$parameter
     Q <- wm <- NULL
     cat(" // Predictions using extreme parameter values //\n")
-    pb <- progress::progress_bar$new(format = "   [:bar] :percent // id :what  ", total = N, width = 60)
+    pb <- progress::progress_bar$new(format = "   [:bar] :percent // id :what  ", 
+                                     total = N, width = 60)
     pb$tick(0)
     Sys.sleep(0.5)
     for (i in seq_len(N)) {
       pb$tick(tokens = list(what = i))
-      idi <- levels(data$id)[[i]]
-      ti <- (data %>% dplyr::filter(id==idi))[["time"]]
+      idi <- levels(as.factor(data$id))[[i]]
+      ti <- (data %>% dplyr::filter(id == idi))[["time"]]
       nti <- length(ti)
-      
-      ri=r.ext[[i]]
+      ri = r.ext[[i]]
       Wi <- W[[i]]
       Li <- L[[i]]
       fi <- f[[i]]
       predi0 <- predim <- wim <- NULL
       wmi <- wpm[[i]]
       for (j in seq_len(mi)) {
-        if (d==1)
-          xij <- matrix(ri[((j-1)*2^d+1):(j*2^d),], ncol=ncol(ri))
-        else
-          xij <- ri[((j-1)*2^d+1):(j*2^d),]
-        wijm <- matrix(1, ncol=d)
-        for (k in seq_len(ncol(xij)))
-          wijm[k] <- mean(Wi[[k]][xij[,k]])
+        if (d == 1) 
+          xij <- matrix(ri[((j - 1) * 2^d + 1):(j * 2^d), 
+          ], ncol = ncol(ri))
+        else xij <- ri[((j - 1) * 2^d + 1):(j * 2^d), 
+        ]
+        wijm <- matrix(1, ncol = d)
+        for (k in seq_len(ncol(xij))) wijm[k] <- mean(Wi[[k]][xij[, 
+                                                                  k]])
         uij <- NULL
-        for (k in seq_len(2^d))
-          uij <- c(uij, do.call(`[`, c(list(Li), xij[k,])))
+        for (k in seq_len(2^d)) uij <- c(uij, do.call(`[`, 
+                                                      c(list(Li), xij[k, ])))
         wmi[j1] <- wijm
-        predi0 <- c(predi0, model(wmi, simulations[[i]], output))
-        predim <- c(predim, rowMeans(matrix(fi[, uij], nrow=nrow(fi))))
+        predi0 <- c(predi0, model(wmi, simulations[[i]], 
+                                  output))
+        predim <- c(predim, rowMeans(matrix(fi[, uij], 
+                                            nrow = nrow(fi))))
         wim <- rbind(wim, data.frame(wmi))
       }
       names(wim) <- pname
-      wm <- rbind(wm, wim %>% mutate(id=idi, q=1:mi))
-      Qi <- data.frame(id=idi, q=rep(1:mi, each=nti), time=rep(ti,mi), f.exact=predi0, f.approx=predim)
-      Q <- rbind(Q,  Qi)
+      wm <- rbind(wm, wim %>% mutate(id = idi, q = 1:mi))
+      Qi <- data.frame(id = idi, q = rep(1:mi, each = nti), 
+                       time = rep(ti, mi), f.exact = predi0, f.approx = predim)
+      Q <- rbind(Q, Qi)
     }
-    Q <- Q %>% mutate(id=factor(id, levels=levels(data$id)), q=factor(q)) # %>% relocate(id, .before=1) %>% relocate(q, .after=1)
-    wm <- wm %>% mutate(id=factor(id, levels=levels(data$id)), q=factor(q)) %>% relocate(id, .before=1) %>% relocate(q, .after=1)
-    pl2 <- Q %>% select(time, f.exact, f.approx, id, q) %>% pivot_longer(-c(id, q, time)) %>% 
-      mutate(name=factor(name, levels=c("f.exact", "f.approx"))) %>%
-      ggplot() + geom_line(aes(time,value,color=q, linetype=name), linewidth=0.75) + 
-      facet_wrap(~id, scales="free") + ylab("Predictions using exteme parameter values") + labs(linetype = NULL) 
-    
+    Q <- Q %>% mutate(id = factor(id, levels = levels(as.factor(data$id))), 
+                      q = factor(q))
+    wm <- wm %>% mutate(id = factor(id, levels = levels(as.factor(data$id))), 
+                        q = factor(q)) %>% relocate(id, .before = 1) %>% 
+      relocate(q, .after = 1)
+    pl2 <- Q %>% select(time, f.exact, f.approx, id, q) %>% 
+      pivot_longer(-c(id, q, time)) %>% mutate(name = factor(name, 
+                                                             levels = c("f.exact", "f.approx"))) %>% ggplot() + 
+      geom_line(aes(time, value, color = q, linetype = name), 
+                linewidth = 0.75) + facet_wrap(~id, scales = "free") + 
+      ylab("Predictions using exteme parameter values") + 
+      labs(linetype = NULL)
     psi.ebe <- as.data.frame(psi.ebe) %>% select(pname[j1])
-    plg <- gridplot(psi.ebe, list(W,L,parameter=pname[j1]), list.id)
+    plg <- gridplot(psi.ebe, list(W, L, parameter = pname[j1]), 
+                    list.id)
     pl <- append(list(pl1, pl2), plg)
   }
-  return(list(plot=pl, pred.EBE=Qebe, errEBE=Ef, pred.extreme=Q, psi.extreme=wm))
+  return(list(plot = pl, pred.EBE = Qebe, errEBE = Ef, pred.extreme = Q, 
+              psi.extreme = wm))
 }
 
 # -----------------------------------------------------------------
